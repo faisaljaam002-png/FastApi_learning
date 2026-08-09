@@ -10,8 +10,13 @@ def get_data():
 
 @app.get("/")
 def hello():
-	return ("Hello first api.")
+	return ("Patient Mangement System.")
 
 @app.get("/about")
 def about():
-	return ("my name is faisal i am a ml engineer.")
+	return ("A System to add and view patient records.")
+
+@app.get("/view")
+def view():
+	data = get_data()
+	return data
