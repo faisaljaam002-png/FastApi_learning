@@ -1,11 +1,12 @@
 from fastapi import FastAPI , Path , HTTPException , Query
-from pydantic import BaseModel , Field
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel , Field , computed_field
 from typing import Annotated , Literal
 import json
 
 app = FastAPI()
 
-class patient(BaseModel):
+class Patient(BaseModel):
 	id : Annotated[str,Field(...,description="Id of the Patient.",examples=["p001"])]
 	name : Annotated[str,Field(...,description="Name of the patient.")]
 	city : Annotated[str,Field(...,description="Name of the city.")]
@@ -14,10 +15,33 @@ class patient(BaseModel):
 	height : Annotated[float,Field(...,description="Height of Patient In Meters.")]
 	weight : Annotated[float,Field(...,description="weigth of Patient in Kgs.")]
 
+	@computed_field
+	@property
+	def bmi(self) -> float:
+		bmi=round(self.weight/self.height**2,2)
+		return bmi
+
+	@computed_field
+	@property
+	def verdict(self) -> str:
+
+		if self.bmi < 18.9:
+			return "Underweight"
+		elif self.bmi < 25:
+			return "Normal"
+		elif self.bmi < 30:
+			return "Normal"
+		else:
+			return "Obese"
+		
 def get_data():
 	with open("patients.json","r") as p:
 		data=json.load(p)
 		return data
+
+def save_data(data):
+	with open("patients.json","w") as p:
+		json.dump(data,p)
 
 
 @app.get("/")
@@ -59,3 +83,16 @@ def sort_patients(sort_by: str = Query(..., description='Sort on the basis of he
     sorted_data = sorted(data.values(), key=lambda x: x.get(sort_by, 0), reverse=sort_order)
 
     return sorted_data
+
+@app.post("/create")
+def create_patient(patient : Patient):
+	data=get_data()
+#checking if patient already exists
+	if patient.id in data:
+		raise HTTPException(status_code=400,detail="Patient Already Exists.")
+#saving new data
+	data[patient.id]=patient.model_dump(exclude="id")
+#creating json
+	save_data(data)
+
+	return JSONResponse(status_code=201,content={"Message": "Patient Created successfully."})
