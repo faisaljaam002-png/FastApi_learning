@@ -11,7 +11,7 @@ class Patient(BaseModel):
 	name : Annotated[str,Field(...,description="Name of the patient.")]
 	city : Annotated[str,Field(...,description="Name of the city.")]
 	age : Annotated[int,Field(...,lt=100,gt=0,description="Age of Patient.")]
-	gender : Annotated[Literal["Male","Female","Others"],Field(...,description="Gender Of The Patient.")]
+	gender : Annotated[Literal["male","female","Others"],Field(...,description="Gender Of The Patient.")]
 	height : Annotated[float,Field(...,description="Height of Patient In Meters.")]
 	weight : Annotated[float,Field(...,description="weigth of Patient in Kgs.")]
 
@@ -38,7 +38,7 @@ class PatientUpdate(BaseModel):
 	name:Annotated[Optional[str], Field(default=None)]
 	city:Annotated[Optional[str], Field(default=None)]
 	age:Annotated[Optional[int],Field(default=None,gt=0)]
-	gender:Annotated[Optional[Literal["Male","Female"]],Field(default=None)]
+	gender:Annotated[Optional[Literal["male","female"]],Field(default=None)]
 	height:Annotated[Optional[float],Field(default=None,gt=0)]
 	weigth:Annotated[Optional[float],Field(default=None,gt=0)]
 
@@ -99,8 +99,35 @@ def create_patient(patient : Patient):
 	if patient.id in data:
 		raise HTTPException(status_code=400,detail="Patient Already Exists.")
 #saving new data
-	data[patient.id]=patient.model_dump(exclude="id")
+	data[patient.id]=patient.model_dump(exclude={"id"})
 #creating json
 	save_data(data)
 
 	return JSONResponse(status_code=201,content={"Message": "Patient Created successfully."})
+
+@app.put("/edit/{patient_id}")
+def update_patient(patient_id:str,patient_update:PatientUpdate):
+
+	data = get_data()
+
+	if patient_id not in data:
+		raise HTTPException(status_code=404,detail="Patient Not Found.")
+
+	exsisting_patient_info=data[patient_id]
+
+	updated_patient_info=patient_update.model_dump(exclude_unset=True)
+
+	for key,value in updated_patient_info.items():
+		exsisting_patient_info[key]=value
+
+		exsisting_patient_info["id"]=patient_id
+		patient_pydantic_obj=Patient(**exsisting_patient_info)
+
+		exsisting_patient_info=patient_pydantic_obj.model_dump(exclude="id")
+
+		data[patient_id]=exsisting_patient_info
+
+		save_data(data)
+
+		return JSONResponse(status_code=200,content={"Message":"Patient info Updated."})
+
